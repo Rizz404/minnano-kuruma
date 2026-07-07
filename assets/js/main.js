@@ -282,10 +282,45 @@
     setTimeout(ask, 350);
   }
 
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  function renderSummary(a) {
+    var box = document.createElement('div');
+    box.className = 'ai-summary';
+    var html = '<p class="ai-summary__title">ご入力内容の確認</p><dl class="ai-summary__list">';
+    STEPS.forEach(function (s) {
+      var v = a[s.key];
+      html += '<dt>' + escapeHtml(s.label) + '</dt><dd>' + (v ? escapeHtml(v) : '未入力') + '</dd>';
+    });
+    html += '</dl>';
+    box.innerHTML = html;
+    body.appendChild(box);
+    scrollBottom();
+  }
+
+  /* ---- 店舗へメール通知 ---- */
+  function sendLeadEmail(a) {
+    try {
+      var params = new URLSearchParams();
+      STEPS.forEach(function (s) { params.append(s.key, a[s.key] || ''); });
+      fetch('ai-lead.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: params.toString()
+      }).catch(function () { /* 通信失敗時もlocalStorageには保存済み */ });
+    } catch (e) { /* fetch非対応環境は無視 */ }
+  }
+
   function finish() {
     progressBar.style.width = '100%';
     clearInput();
     saveLead(answers);
+    sendLeadEmail(answers);
+    renderSummary(answers);
     botMsg('ありがとうございます。');
     botMsg('詳細査定は店長が直接確認いたします。現在の情報から査定可能です。');
     botMsg('LINEまたはお電話にて、正式査定をご案内いたします。');
